@@ -1,0 +1,1322 @@
+<!DOCTYPE html><html lang="en"><head><meta name="x-poe-datastore-behavior" content="local_only"><meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://code.jquery.com https://unpkg.com https://d3js.org https://threejs.org https://cdn.plot.ly https://stackpath.bootstrapcdn.com https://maps.googleapis.com https://cdn.tailwindcss.com https://ajax.googleapis.com https://kit.fontawesome.com https://cdn.datatables.net https://maxcdn.bootstrapcdn.com https://code.highcharts.com https://tako-static-assets-production.s3.amazonaws.com https://www.youtube.com https://fonts.googleapis.com https://fonts.gstatic.com https://pfst.cf2.poecdn.net https://puc.poecdn.net https://i.imgur.com https://wikimedia.org https://*.icons8.com https://*.giphy.com https://picsum.photos https://images.unsplash.com; frame-src 'self' https://www.youtube.com https://trytako.com; child-src 'self'; manifest-src 'self'; worker-src 'self'; upgrade-insecure-requests; block-all-mixed-content;">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#5141b8">
+  <title>Color Shelf: Triple Match 3D</title>
+  <style>
+    :root {
+      --ink: #302858;
+      --muted: #746c96;
+      --glass: rgba(255, 255, 255, .78);
+      --wood: #b96b38;
+      --wood-dark: #864524;
+      --pink: #ff76bd;
+      --aqua: #67e6df;
+      --gold: #ffd86a;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      font-family: ui-rounded, "Trebuchet MS", system-ui, -apple-system, sans-serif;
+      background:
+        radial-gradient(circle at 12% 12%, rgba(255,255,255,.9) 0 2px, transparent 3px),
+        radial-gradient(circle at 83% 20%, rgba(255,255,255,.65) 0 3px, transparent 4px),
+        linear-gradient(145deg, #a6f0e9 0%, #d8c9ff 48%, #ffd5e8 100%);
+      background-size: 70px 70px, 100px 100px, auto;
+      overflow-x: hidden;
+    }
+
+    button, select { font: inherit; }
+    button { -webkit-tap-highlight-color: transparent; }
+
+    .app {
+      width: min(1100px, 100%);
+      margin: 0 auto;
+      padding: 14px 16px 28px;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      min-width: 0;
+    }
+
+    .brand-mark {
+      display: grid;
+      place-items: center;
+      width: 48px;
+      height: 48px;
+      border-radius: 16px;
+      font-size: 27px;
+      background: linear-gradient(145deg, #fff, #ffe6f5);
+      box-shadow: 0 5px 0 #d59abd, 0 10px 24px #6952a233;
+      transform: rotate(-5deg);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(17px, 4vw, 25px);
+      line-height: 1.05;
+      letter-spacing: -.7px;
+    }
+
+    .subtitle {
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .top-actions { display: flex; gap: 8px; }
+
+    .icon-button, .pill-button {
+      border: 0;
+      cursor: pointer;
+      color: var(--ink);
+      background: var(--glass);
+      box-shadow: 0 4px 12px #5141b81c, inset 0 1px #fff;
+      transition: transform .14s, filter .14s;
+    }
+
+    .icon-button:hover, .pill-button:hover { filter: brightness(1.04); }
+    .icon-button:active, .pill-button:active { transform: translateY(2px) scale(.98); }
+
+    .icon-button {
+      width: 42px;
+      height: 42px;
+      border-radius: 14px;
+      font-size: 19px;
+    }
+
+    .hud {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 9px;
+      margin-bottom: 10px;
+    }
+
+    .hud-card {
+      min-height: 59px;
+      padding: 9px 12px;
+      border: 1px solid #ffffffb8;
+      border-radius: 17px;
+      background: var(--glass);
+      box-shadow: 0 7px 20px #5141b812, inset 0 1px #fff;
+      backdrop-filter: blur(12px);
+    }
+
+    .hud-label {
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: .8px;
+      text-transform: uppercase;
+    }
+
+    .hud-value {
+      margin-top: 2px;
+      font-size: 19px;
+      font-weight: 1000;
+      line-height: 1;
+    }
+
+    .timer-value { color: #dd438e; }
+    .small-value { font-size: 15px; }
+
+    .progress-track {
+      height: 7px;
+      margin-top: 6px;
+      overflow: hidden;
+      border-radius: 99px;
+      background: #e8e2f5;
+    }
+
+    .progress-fill {
+      height: 100%;
+      width: 0;
+      border-radius: inherit;
+      background: linear-gradient(90deg, #ff77bb, #ffcf65);
+      transition: width .25s;
+    }
+
+    .board-shell {
+      position: relative;
+      overflow: hidden;
+      min-height: 300px;
+      padding: 18px 16px 22px;
+      border: 1px solid #ffffffa6;
+      border-radius: 27px;
+      background: rgba(255,255,255,.39);
+      box-shadow: 0 15px 38px #5746a323, inset 0 1px #fff;
+      backdrop-filter: blur(10px);
+    }
+
+    .board-topline {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin: 0 2px 15px;
+    }
+
+    .theme-name {
+      font-size: 15px;
+      font-weight: 1000;
+    }
+
+    .instructions {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      text-align: right;
+    }
+
+    .shelves {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr));
+      align-items: start;
+      gap: 16px 13px;
+    }
+
+    .shelf {
+      position: relative;
+      padding: 11px 10px 16px;
+      border-radius: 18px 18px 11px 11px;
+      background: linear-gradient(180deg, #d38a50, var(--wood) 55%, #a95d32);
+      box-shadow: 0 8px 0 var(--wood-dark), 0 13px 17px #593a3927, inset 0 3px 0 #f4b777;
+    }
+
+    .shelf::before {
+      content: "";
+      position: absolute;
+      right: 8px;
+      bottom: -11px;
+      left: 8px;
+      height: 10px;
+      border-radius: 0 0 9px 9px;
+      background: #8b4e2d;
+      box-shadow: 0 4px 0 #6e3d29;
+    }
+
+    .shelf-label {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin: 0 2px 8px;
+      color: #fff6e9;
+      font-size: 11px;
+      font-weight: 1000;
+      letter-spacing: .5px;
+      text-shadow: 0 1px 2px #60381966;
+      text-transform: uppercase;
+    }
+
+    .tier-tag {
+      padding: 2px 6px;
+      border-radius: 99px;
+      color: #714025;
+      background: #ffe0ac;
+      font-size: 9px;
+      text-shadow: none;
+    }
+
+    .slots {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 7px;
+    }
+
+    .slot {
+      position: relative;
+      display: grid;
+      place-items: center;
+      min-width: 0;
+      aspect-ratio: 1 / 1;
+      padding: 1px;
+      border: 2px solid #87502f;
+      border-radius: 13px;
+      color: var(--ink);
+      background: linear-gradient(145deg, #7b442c, #96572f);
+      box-shadow: inset 0 3px 6px #48271869, 0 1px #f7bc7a;
+      cursor: pointer;
+      touch-action: manipulation;
+      transition: transform .16s, border-color .16s, box-shadow .16s;
+    }
+
+    .slot.empty {
+      background: linear-gradient(145deg, #9b5c36, #ad693b);
+      box-shadow: inset 0 4px 8px #6537197a;
+    }
+
+    .slot:hover { transform: translateY(-2px); }
+    .slot.selected {
+      border-color: #fff36e;
+      box-shadow: 0 0 0 3px #fff36e7a, 0 0 20px #fff36e;
+      transform: translateY(-4px);
+    }
+
+    .slot.hint-pulse { animation: hintPulse .7s ease-in-out 3; }
+    .slot.shelf-target { outline: 3px dashed #fff; outline-offset: 2px; }
+
+    .item {
+      position: relative;
+      display: grid;
+      place-items: center;
+      width: 100%;
+      height: 100%;
+      min-height: 43px;
+      border-radius: 10px;
+      background:
+        radial-gradient(circle at 30% 22%, #fff 0 4%, transparent 5%),
+        linear-gradient(145deg, #fff, #f4edff);
+      box-shadow: 0 4px 0 #c9b9db, 0 6px 9px #39254d30;
+      font-size: clamp(25px, 5vw, 39px);
+      line-height: 1;
+      user-select: none;
+      transition: transform .15s;
+    }
+
+    .slot:hover .item { transform: translateY(-2px) rotate(-2deg); }
+    .slot.selected .item { transform: translateY(-4px) scale(1.04); }
+
+    .item-badge {
+      position: absolute;
+      right: -5px;
+      bottom: -5px;
+      z-index: 2;
+      display: grid;
+      place-items: center;
+      min-width: 20px;
+      height: 20px;
+      padding: 0 4px;
+      border: 2px solid white;
+      border-radius: 99px;
+      color: white;
+      background: #674bb4;
+      font-size: 11px;
+      font-weight: 1000;
+      box-shadow: 0 2px 5px #20144855;
+    }
+
+    .item-badge.lock { background: #665778; }
+    .item-badge.freeze { background: #44bcca; }
+    .item-badge.hidden-badge { background: #f076a8; }
+
+    .slot.blocked .item { filter: saturate(.78); }
+    .slot.frozen .item { box-shadow: 0 4px 0 #89c8d1, 0 0 12px #88f2ffb5; }
+
+    .board-footer {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      margin-top: 25px;
+      color: #635b84;
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .space-meter {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .meter-dots { display: flex; gap: 3px; }
+    .meter-dot {
+      width: 12px;
+      height: 8px;
+      border-radius: 99px;
+      background: #d6cce9;
+      transition: background .2s, transform .2s;
+    }
+    .meter-dot.filled { background: #ff78ae; transform: scaleY(1.2); }
+
+    .controls {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 9px;
+      margin-top: 23px;
+    }
+
+    .pill-button {
+      min-height: 43px;
+      padding: 0 17px;
+      border-radius: 15px;
+      font-weight: 1000;
+    }
+
+    .pill-button.primary {
+      color: white;
+      background: linear-gradient(135deg, #8068e8, #ae71d8);
+      box-shadow: 0 5px 0 #634bb4, 0 9px 20px #604db633;
+    }
+
+    .pill-button.gold {
+      color: #553e0d;
+      background: linear-gradient(135deg, #ffe47e, #ffbd5b);
+      box-shadow: 0 5px 0 #d79537, 0 9px 20px #ae7a222b;
+    }
+
+    .pill-button:disabled { opacity: .45; cursor: not-allowed; }
+
+    .status {
+      min-height: 24px;
+      margin-top: 12px;
+      color: #635b84;
+      font-size: 12px;
+      font-weight: 800;
+      text-align: center;
+    }
+
+    .overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 10;
+      display: none;
+      place-items: center;
+      padding: 18px;
+      background: #28204472;
+      backdrop-filter: blur(7px);
+    }
+
+    .overlay.show { display: grid; }
+
+    .modal {
+      width: min(430px, 100%);
+      padding: 25px 23px 22px;
+      border: 1px solid #ffffffcc;
+      border-radius: 26px;
+      background: linear-gradient(150deg, #fff, #f8efff);
+      box-shadow: 0 20px 70px #17102d55, inset 0 1px #fff;
+      text-align: center;
+      animation: modalIn .25s ease-out;
+    }
+
+    .modal-emoji { font-size: 46px; }
+    .modal h2 { margin: 7px 0 8px; font-size: 25px; }
+    .modal p { margin: 0 0 17px; color: var(--muted); line-height: 1.45; font-size: 14px; }
+    .modal .pill-button { width: 100%; margin-top: 8px; }
+
+    .help-copy {
+      max-height: 55vh;
+      overflow: auto;
+      padding-right: 4px;
+      text-align: left;
+      font-size: 13px !important;
+    }
+
+    .help-copy strong { color: var(--ink); }
+
+    .particles {
+      position: fixed;
+      z-index: 8;
+      pointer-events: none;
+      inset: 0;
+      overflow: hidden;
+    }
+
+    .particle {
+      position: absolute;
+      left: var(--x);
+      top: var(--y);
+      font-size: var(--size);
+      animation: burst .85s ease-out forwards;
+    }
+
+    .toast {
+      position: fixed;
+      z-index: 9;
+      left: 50%;
+      bottom: 22px;
+      padding: 10px 16px;
+      border: 1px solid #ffffffc9;
+      border-radius: 99px;
+      color: var(--ink);
+      background: #fffefaed;
+      box-shadow: 0 7px 20px #38275d30;
+      font-size: 13px;
+      font-weight: 1000;
+      transform: translate(-50%, 20px);
+      opacity: 0;
+      pointer-events: none;
+      transition: .25s;
+    }
+
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+    @keyframes burst {
+      0% { opacity: 1; transform: translate(0, 0) scale(.5) rotate(0); }
+      100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(1.35) rotate(170deg); }
+    }
+
+    @keyframes hintPulse {
+      50% { box-shadow: 0 0 0 4px #fff36e, 0 0 22px #fff36e; }
+    }
+
+    @keyframes modalIn {
+      from { opacity: 0; transform: translateY(12px) scale(.97); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    @media (max-width: 560px) {
+      .app { padding: 10px 10px 24px; }
+      header { margin-bottom: 9px; }
+      .brand-mark { width: 41px; height: 41px; font-size: 23px; }
+      .subtitle { font-size: 10px; }
+      .hud { gap: 6px; }
+      .hud-card { min-height: 53px; padding: 8px; border-radius: 14px; }
+      .hud-label { font-size: 9px; letter-spacing: .5px; }
+      .hud-value { font-size: 17px; }
+      .small-value { font-size: 13px; }
+      .board-shell { padding: 14px 10px 18px; border-radius: 21px; }
+      .shelves { grid-template-columns: repeat(auto-fit, minmax(min(100%, 155px), 1fr)); gap: 14px 10px; }
+      .shelf { padding: 9px 8px 13px; }
+      .slots { gap: 5px; }
+      .slot { border-radius: 10px; }
+      .item { min-height: 35px; border-radius: 8px; font-size: clamp(23px, 8vw, 34px); }
+      .board-topline { align-items: flex-start; }
+      .instructions { max-width: 52%; font-size: 10px; }
+      .board-footer { margin-top: 22px; font-size: 10px; }
+      .pill-button { min-height: 41px; padding: 0 14px; font-size: 13px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header>
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">🧸</div>
+        <div>
+          <h1>Color Shelf: Triple Match 3D</h1>
+          <div class="subtitle">Sort a little. Match a lot. Clear the shelves!</div>
+        </div>
+      </div>
+      <div class="top-actions">
+        <button class="icon-button" id="soundButton" aria-label="Toggle sound" title="Toggle sound">🔊</button>
+        <button class="icon-button" id="helpButton" aria-label="How to play" title="How to play">?</button>
+      </div>
+    </header>
+
+    <section class="hud" aria-label="Game status">
+      <div class="hud-card">
+        <div class="hud-label">Level</div>
+        <div class="hud-value small-value" id="levelLabel">1 / 100</div>
+      </div>
+      <div class="hud-card">
+        <div class="hud-label">Time</div>
+        <div class="hud-value timer-value" id="timerLabel">03:00</div>
+      </div>
+      <div class="hud-card">
+        <div class="hud-label">Items left</div>
+        <div class="hud-value small-value" id="itemsLabel">0</div>
+      </div>
+      <div class="hud-card">
+        <div class="hud-label">Level progress</div>
+        <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+      </div>
+    </section>
+
+    <section class="board-shell">
+      <div class="board-topline">
+        <div class="theme-name" id="themeName">🍬 Candy Corner</div>
+        <div class="instructions">Tap an item, then tap an empty slot.<br>Make trios in the same shelf section.</div>
+      </div>
+      <div class="shelves" id="shelves" aria-label="Puzzle shelves"></div>
+      <div class="board-footer">
+        <div class="space-meter">
+          <span>SPACE</span><span class="meter-dots" id="meterDots"></span>
+        </div>
+        <div id="mechanicLabel">No obstacles</div>
+      </div>
+    </section>
+
+    <nav class="controls" aria-label="Game controls">
+      <button class="pill-button" id="restartButton">↻ Restart</button>
+      <button class="pill-button gold" id="hintButton">✦ Hint</button>
+      <button class="pill-button primary" id="nextButton">Next Level →</button>
+      <select class="pill-button" id="levelSelect" aria-label="Choose level"></select>
+    </nav>
+    <div class="status" id="status" aria-live="polite">Select an item to begin sorting.</div>
+  </main>
+
+  <div class="particles" id="particles"></div>
+  <div class="toast" id="toast"></div>
+
+  <div class="overlay show" id="startOverlay">
+    <div class="modal">
+      <div class="modal-emoji">🪄</div>
+      <h2>Ready to sort?</h2>
+      <p>Move matching items into the same shelf section. Clear every item before time—or shelf space—runs out.</p>
+      <button class="pill-button primary" id="startButton">Start Level 1</button>
+    </div>
+  </div>
+
+  <div class="overlay" id="resultOverlay">
+    <div class="modal">
+      <div class="modal-emoji" id="resultEmoji">🎉</div>
+      <h2 id="resultTitle">Shelf cleared!</h2>
+      <p id="resultText"></p>
+      <button class="pill-button primary" id="resultButton">Continue</button>
+      <button class="pill-button" id="resultReplay">Replay level</button>
+    </div>
+  </div>
+
+  <div class="overlay" id="helpOverlay">
+    <div class="modal">
+      <div class="modal-emoji">📖</div>
+      <h2>How to play</h2>
+      <p class="help-copy">
+        <strong>Sort:</strong> Tap or click a movable item, then an empty slot. A shelf section holds 3 or 4 items.<br><br>
+        <strong>Match:</strong> Put exactly three matching items in one section to clear them. Matches free shelf space.<br><br>
+        <strong>Hidden:</strong> An item behind another is revealed when the front item is cleared.<br>
+        <strong>Locked:</strong> Bring its two matching partners to the same section to clear the trio.<br>
+        <strong>Frozen:</strong> Two matches in its section thaw it so it can be moved.<br><br>
+        <strong>Space:</strong> Non-matching moves add shelf pressure. A match reduces it. Fill the meter and the shelf jams.<br><br>
+        Themes change every 10 levels. The 100-level campaign gradually adds shelves, item types, obstacles, and tighter timers.
+      </p>
+      <button class="pill-button primary" id="closeHelpButton">Got it!</button>
+    </div>
+  </div>
+
+<script>
+(() => {
+  "use strict";
+
+  const themes = [
+    { name: "Candy Corner", emoji: "🍬", items: ["🍬","🍭","🍫","🍩","🧁","🍪","🍡","🍦","🍰","🍧","🥤","🧋","🍓","🍒","🍉","🍍","🍇","🍪","🍮","🍨"] },
+    { name: "Neon Sports Club", emoji: "⚽", items: ["⚽","🏀","🏈","⚾","🎾","🏐","🥎","🏉","🎱","🥏","🏓","🏸","🥊","⛸️","🛹","🚴","🏆","🥇","🛼","🎳"] },
+    { name: "Glow Toy Zoo", emoji: "🧸", items: ["🧸","🐻","🐼","🐸","🐵","🦊","🐰","🐯","🐨","🐷","🐥","🐙","🦄","🐢","🐬","🦋","🐞","🐳","🦖","🐱"] },
+    { name: "Happy Garden", emoji: "🌼", items: ["🌼","🌻","🌷","🌹","🌸","🌵","🍄","🌱","🍀","🌿","🪴","🪻","🌺","🪷","🍁","🌈","☀️","🌙","⭐","☁️"] },
+    { name: "Tiny Art Studio", emoji: "🎨", items: ["🎨","🖍️","✏️","🖌️","📝","📚","✂️","🧵","🧶","📎","📐","🖊️","🪡","🧷","📏","🗒️","📌","🗃️","🧽","🖼️"] },
+    { name: "Beach Day", emoji: "🏖️", items: ["🏖️","🕶️","🩴","🩱","🩳","🪁","🏄","🐚","🦀","🪸","🦩","🍹","🛟","⛱️","🪣","🐠","🦈","🪼","🏝️","🌊"] },
+    { name: "Cozy Kitchen", emoji: "🍳", items: ["🍳","🥐","🥨","🧀","🥑","🥕","🌽","🍋","🍊","🥝","🍅","🥞","🍕","🍜","🥣","🍽️","🧇","🥯","🫐","🧈"] },
+    { name: "Space Trinkets", emoji: "🚀", items: ["🚀","🪐","🌟","🌛","☄️","👽","🛸","🌎","🌞","🌌","🛰️","🔭","🌠","🪨","💫","🌑","🧑‍🚀","🪄","🧿","🔮"] },
+    { name: "Party Pop", emoji: "🎉", items: ["🎉","🎈","🎁","🎀","🎊","🎭","🎤","🎧","🎹","🎺","🎸","🥁","🎷","🪇","🎵","🎶","🪩","🃏","🎟️","🪅"] },
+    { name: "Dreamy Wonders", emoji: "✨", items: ["✨","💎","👑","🪞","🧚","🦚","🦋","🌙","💖","💝","🧸","🪷","🦄","🌈","🪄","🔔","🕯️","🪽","🧁","⭐"] }
+  ];
+
+  const $ = id => document.getElementById(id);
+  const shelvesEl = $("shelves");
+  const state = {
+    level: 1,
+    running: false,
+    won: false,
+    lost: false,
+    selected: null,
+    sections: [],
+    initialSections: [],
+    initialObjects: [],
+    totalItems: 0,
+    timeLeft: 180,
+    timerId: null,
+    jam: 0,
+    jamLimit: 7,
+    soundOn: true,
+    audio: null,
+    musicTimer: null,
+    moveCount: 0
+  };
+
+  const themesByLevel = n => themes[Math.floor((n - 1) / 10) % themes.length];
+
+  function configFor(level) {
+    let shelves, types, timer, mode, capacity;
+    if (level <= 5) {
+      shelves = 2; types = 3; timer = 180; mode = "tutorial"; capacity = () => 3;
+    } else if (level <= 20) {
+      shelves = level < 13 ? 3 : 4; types = 5; timer = 165; mode = "easy";
+      capacity = i => (level >= 12 && i % 2 === 1) ? 4 : 3;
+    } else if (level <= 40) {
+      shelves = 5; types = 8; timer = 120; mode = "hidden"; capacity = () => 4;
+    } else if (level <= 60) {
+      shelves = 6; types = 12; timer = 110; mode = "locked";
+      capacity = i => ((i + level) % 3 === 0) ? 3 : 4;
+    } else if (level <= 80) {
+      shelves = 7 + Math.floor((level - 61) / 10); types = 15; timer = 100; mode = "frozen";
+      capacity = i => (i % 3 === 0) ? 3 : 4;
+    } else {
+      shelves = 9; types = 20; timer = 90; mode = "expert";
+      capacity = i => (i % 2 === 0) ? 4 : 3;
+    }
+
+    const capacities = Array.from({ length: shelves }, (_, i) => capacity(i));
+    const slots = capacities.reduce((a, b) => a + b, 0);
+    const groupCount = mode === "expert"
+      ? 20
+      : Math.max(1, Math.min(types, Math.floor((slots - 1) / 3)));
+
+    const obstacleCounts = {
+      hidden: mode === "hidden" ? Math.min(4, 1 + Math.floor((level - 21) / 5)) : 0,
+      locked: mode === "locked" ? Math.min(4, 1 + Math.floor((level - 41) / 5)) :
+              mode === "frozen" ? 2 : mode === "expert" ? 4 : 0,
+      frozen: mode === "frozen" ? Math.min(5, 1 + Math.floor((level - 61) / 4)) :
+              mode === "expert" ? 5 : 0
+    };
+
+    return {
+      shelves, types, timer, mode, capacities, slots, groupCount,
+      obstacleCounts,
+      jamLimit: level <= 5 ? 7 : level <= 20 ? 7 : level <= 40 ? 6 : level <= 60 ? 6 : level <= 80 ? 5 : 5
+    };
+  }
+
+  function makeItem(type, id) {
+    return { id, type, locked: false, frozen: false, freezeHits: 0 };
+  }
+
+  function makeLevel(level) {
+    const cfg = configFor(level);
+    const theme = themesByLevel(level);
+    const objects = [];
+    let id = 1;
+
+    for (let g = 0; g < cfg.groupCount; g++) {
+      const type = g % cfg.types;
+      for (let copy = 0; copy < 3; copy++) objects.push(makeItem(type, id++));
+    }
+
+    shuffle(objects);
+
+    const lockItems = chooseByType(objects, cfg.obstacleCounts.locked);
+    lockItems.forEach(item => item.locked = true);
+
+    const freezeItems = chooseByType(objects, cfg.obstacleCounts.frozen, new Set(lockItems.map(x => x.id)));
+    freezeItems.forEach(item => item.frozen = true);
+
+    const sections = cfg.capacities.map((capacity, i) => ({
+      capacity,
+      tier: (cfg.mode === "expert" && i >= 5) ? 2 : 1,
+      items: Array.from({ length: capacity }, () => [])
+    }));
+
+    let visibleCount = objects.length;
+    let hiddenCount = 0;
+
+    if (cfg.mode === "hidden") {
+      hiddenCount = Math.min(cfg.obstacleCounts.hidden, Math.max(1, Math.floor(objects.length * .22)));
+      visibleCount = objects.length - hiddenCount;
+    } else if (cfg.mode === "expert") {
+      visibleCount = Math.max(12, cfg.slots - Math.max(3, Math.floor(cfg.slots * .16)));
+      hiddenCount = objects.length - visibleCount;
+    }
+
+    const visible = objects.slice(0, visibleCount);
+    const hidden = objects.slice(visibleCount);
+
+    // Retry the visible placement to avoid starting with an already-complete trio.
+    let placement = null;
+    for (let attempt = 0; attempt < 90; attempt++) {
+      const shuffledSlots = Array.from({ length: cfg.slots }, (_, i) => i);
+      shuffle(shuffledSlots);
+      const attemptSlots = Array.from({ length: cfg.slots }, () => null);
+      let valid = true;
+
+      for (let i = 0; i < visible.length; i++) {
+        const slotIndex = shuffledSlots[i];
+        attemptSlots[slotIndex] = visible[i];
+      }
+
+      for (let s = 0; s < cfg.shelves; s++) {
+        const counts = {};
+        let offset = cfg.capacities.slice(0, s).reduce((a, b) => a + b, 0);
+        for (let j = 0; j < cfg.capacities[s]; j++) {
+          const item = attemptSlots[offset + j];
+          if (item) counts[item.type] = (counts[item.type] || 0) + 1;
+        }
+        if (Object.values(counts).some(n => n >= 3)) { valid = false; break; }
+      }
+
+      if (valid) { placement = attemptSlots; break; }
+    }
+
+    if (!placement) {
+      placement = Array.from({ length: cfg.slots }, () => null);
+      const order = Array.from({ length: cfg.slots }, (_, i) => i);
+      shuffle(order);
+      visible.forEach((item, i) => { placement[order[i]] = item; });
+    }
+
+    let flatIndex = 0;
+    const slotRefs = [];
+    for (const section of sections) {
+      for (const slot of section.items) {
+        slotRefs.push(slot);
+        const item = placement[flatIndex++];
+        if (item) slot.push(item);
+      }
+    }
+
+    shuffle(hidden);
+    hidden.forEach(item => {
+      const occupied = slotRefs.filter(slot => slot.length > 0);
+      if (!occupied.length) return;
+      occupied[Math.floor(Math.random() * occupied.length)].push(item);
+    });
+
+    return { cfg, theme, sections, objects, hiddenCount };
+  }
+
+  function chooseByType(objects, count, excluded = new Set()) {
+    const picks = [];
+    const typeGroups = new Map();
+    objects.forEach(item => {
+      if (excluded.has(item.id)) return;
+      if (!typeGroups.has(item.type)) typeGroups.set(item.type, []);
+      typeGroups.get(item.type).push(item);
+    });
+    const candidates = [...typeGroups.values()];
+    shuffle(candidates);
+    for (const group of candidates) {
+      const choice = group.find(item => !excluded.has(item.id));
+      if (choice && picks.length < count) picks.push(choice);
+    }
+    return picks;
+  }
+
+  function shuffle(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [array[i], array[j]] = [array[j], array[i]];
+    }
+    return array;
+  }
+
+  function startLevel(level, showStart = false) {
+    clearInterval(state.timerId);
+    state.level = Math.max(1, Math.min(100, level));
+    const created = makeLevel(state.level);
+    state.cfg = created.cfg;
+    state.theme = created.theme;
+    state.sections = created.sections;
+    state.initialSections = cloneSections(created.sections);
+    state.totalItems = created.objects.length;
+    state.timeLeft = created.cfg.timer;
+    state.jam = 0;
+    state.jamLimit = created.cfg.jamLimit;
+    state.moveCount = 0;
+    state.selected = null;
+    state.running = !showStart;
+    state.won = false;
+    state.lost = false;
+
+    $("startOverlay").classList.toggle("show", showStart);
+    $("resultOverlay").classList.remove("show");
+    $("levelSelect").value = String(state.level);
+    $("startButton").textContent = `Start Level ${state.level}`;
+    $("status").textContent = showStart ? "Ready when you are!" : "Select an item to begin sorting.";
+
+    render();
+    if (state.running) beginTimer();
+  }
+
+  function cloneSections(sections) {
+    return sections.map(section => ({
+      capacity: section.capacity,
+      tier: section.tier,
+      items: section.items.map(slot => slot.map(item => ({ ...item })))
+    }));
+  }
+
+  function beginTimer() {
+    clearInterval(state.timerId);
+    state.timerId = setInterval(() => {
+      if (!state.running) return;
+      state.timeLeft = Math.max(0, state.timeLeft - 1);
+      updateHud();
+      if (state.timeLeft <= 0) endGame(false, "Time ran out! Take a breath and try again.");
+    }, 1000);
+  }
+
+  function render() {
+    const theme = state.theme || themesByLevel(state.level);
+    $("themeName").textContent = `${theme.emoji} ${theme.name}`;
+    $("mechanicLabel").textContent = mechanicText(state.cfg);
+    shelvesEl.innerHTML = "";
+
+    state.sections.forEach((section, sectionIndex) => {
+      const shelf = document.createElement("article");
+      shelf.className = "shelf";
+
+      const label = document.createElement("div");
+      label.className = "shelf-label";
+      label.innerHTML = `<span>Shelf ${sectionIndex + 1}</span><span class="tier-tag">${section.tier === 2 ? "UPPER TIER" : `${section.capacity} SLOTS`}</span>`;
+      shelf.appendChild(label);
+
+      const slotsEl = document.createElement("div");
+      slotsEl.className = "slots";
+
+      section.items.forEach((stack, slotIndex) => {
+        const button = document.createElement("button");
+        button.className = "slot" + (stack.length ? "" : " empty");
+        button.type = "button";
+        button.setAttribute("aria-label", stack.length ? accessibleItemName(stack[0], theme) : `Empty slot on shelf ${sectionIndex + 1}`);
+
+        if (state.selected && state.selected.section === sectionIndex && state.selected.slot === slotIndex) {
+          button.classList.add("selected");
+        }
+
+        if (stack.length) {
+          const item = stack[0];
+          const itemEl = document.createElement("span");
+          itemEl.className = "item";
+          itemEl.textContent = theme.items[item.type % theme.items.length];
+
+          if (item.frozen) button.classList.add("frozen", "blocked");
+          if (item.locked) button.classList.add("blocked");
+
+          if (item.locked) addBadge(itemEl, "🔗", "lock", "Locked");
+          else if (item.frozen) addBadge(itemEl, `${Math.max(0, 2 - item.freezeHits)}`, "freeze", "Matches to thaw");
+
+          if (stack.length > 1) addBadge(itemEl, `↧${stack.length - 1}`, "hidden-badge", "Hidden item behind");
+
+          button.appendChild(itemEl);
+        }
+
+        button.addEventListener("click", () => onSlotTap(sectionIndex, slotIndex));
+        slotsEl.appendChild(button);
+      });
+
+      shelf.appendChild(slotsEl);
+      shelvesEl.appendChild(shelf);
+    });
+
+    renderMeter();
+    updateHud();
+  }
+
+  function accessibleItemName(item, theme) {
+    const obstacle = item.locked ? "locked" : item.frozen ? "frozen" : "item";
+    return `${obstacle} ${theme.items[item.type % theme.items.length]}`;
+  }
+
+  function addBadge(parent, text, cls, title) {
+    const badge = document.createElement("span");
+    badge.className = `item-badge ${cls}`;
+    badge.textContent = text;
+    badge.title = title;
+    parent.appendChild(badge);
+  }
+
+  function mechanicText(cfg) {
+    if (cfg.mode === "tutorial") return "Learn the basics";
+    if (cfg.mode === "easy") return "Bright, easy sorting";
+    const bits = [];
+    if (cfg.mode === "hidden" || cfg.mode === "expert") bits.push("Hidden");
+    if (cfg.mode === "locked" || cfg.mode === "frozen" || cfg.mode === "expert") bits.push("Locked");
+    if (cfg.mode === "frozen" || cfg.mode === "expert") bits.push("Frozen");
+    return bits.length ? bits.join(" · ") : "No obstacles";
+  }
+
+  function renderMeter() {
+    const dots = $("meterDots");
+    dots.innerHTML = "";
+    for (let i = 0; i < state.jamLimit; i++) {
+      const dot = document.createElement("span");
+      dot.className = "meter-dot" + (i < state.jam ? " filled" : "");
+      dots.appendChild(dot);
+    }
+  }
+
+  function updateHud() {
+    $("levelLabel").textContent = `${state.level} / 100`;
+    const mins = Math.floor(state.timeLeft / 60);
+    const secs = state.timeLeft % 60;
+    $("timerLabel").textContent = `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+    $("itemsLabel").textContent = String(countItems());
+    const cleared = state.totalItems - countItems();
+    $("progressFill").style.width = `${state.totalItems ? Math.max(0, cleared / state.totalItems * 100) : 0}%`;
+  }
+
+  function countItems() {
+    return state.sections.reduce((sum, section) =>
+      sum + section.items.reduce((n, stack) => n + stack.length, 0), 0);
+  }
+
+  function onSlotTap(sectionIndex, slotIndex) {
+    if (!state.running) return;
+    const stack = state.sections[sectionIndex].items[slotIndex];
+
+    if (state.selected) {
+      const source = state.selected;
+      if (source.section === sectionIndex && source.slot === slotIndex) {
+        state.selected = null;
+        render();
+        return;
+      }
+      if (!stack.length) {
+        moveItem(source, { section: sectionIndex, slot: slotIndex });
+        return;
+      }
+      if (isMovable(stack)) {
+        state.selected = { section: sectionIndex, slot: slotIndex };
+        render();
+        $("status").textContent = "Item selected. Tap an empty slot to move it.";
+        return;
+      }
+      showToast("That item can't move yet.");
+      return;
+    }
+
+    if (!stack.length) {
+      $("status").textContent = "Choose an item first.";
+      return;
+    }
+    if (!isMovable(stack)) {
+      if (stack[0].locked) showToast("Bring its matching pair to this shelf.");
+      else if (stack[0].frozen) showToast(`${Math.max(0, 2 - stack[0].freezeHits)} nearby match(es) to thaw it.`);
+      else showToast("Clear the item in front to reveal this one.");
+      return;
+    }
+
+    state.selected = { section: sectionIndex, slot: slotIndex };
+    $("status").textContent = "Now tap an empty slot on any shelf.";
+    render();
+  }
+
+  function isMovable(stack) {
+    if (!stack || !stack.length) return false;
+    const item = stack[0];
+    return !item.locked && !item.frozen && stack.length === 1;
+  }
+
+  function moveItem(from, to) {
+    const sourceStack = state.sections[from.section].items[from.slot];
+    const destStack = state.sections[to.section].items[to.slot];
+    if (!sourceStack.length || destStack.length) {
+      state.selected = null;
+      render();
+      return;
+    }
+
+    const item = sourceStack.shift();
+    destStack.push(item);
+    state.selected = null;
+    state.moveCount++;
+    playSound("clack");
+
+    const matched = resolveMatches(to.section);
+    if (matched > 0) {
+      state.jam = Math.max(0, state.jam - 2);
+      playSound("match");
+      burstAtSlot(to.section, to.slot);
+      $("status").textContent = matched > 1 ? `Amazing! ${matched} trios cleared!` : "Triple match! Shelf space freed!";
+    } else {
+      state.jam++;
+      $("status").textContent = "No trio yet. Sort carefully to avoid a shelf jam.";
+    }
+
+    render();
+
+    if (countItems() === 0) {
+      endGame(true, "Every last item is cleared. Beautiful sorting!");
+      return;
+    }
+
+    if (state.jam >= state.jamLimit) {
+      endGame(false, "The shelves are jammed! Make matches to free up room.");
+    }
+  }
+
+  function resolveMatches(sectionIndex) {
+    const section = state.sections[sectionIndex];
+    let matchCount = 0;
+    let keepChecking = true;
+
+    while (keepChecking) {
+      keepChecking = false;
+      const byType = new Map();
+
+      section.items.forEach((stack, slotIndex) => {
+        if (!stack.length) return;
+        const item = stack[0];
+        if (item.frozen) return;
+        if (!byType.has(item.type)) byType.set(item.type, []);
+        byType.get(item.type).push({ item, slotIndex });
+      });
+
+      for (const group of byType.values()) {
+        if (group.length < 3) continue;
+        const chosen = group.slice(0, 3);
+        const lockedCount = chosen.filter(x => x.item.locked).length;
+        const movableCount = chosen.filter(x => !x.item.locked).length;
+
+        // A locked item is cleared only when its two matching partners join it.
+        if (lockedCount > 0 && movableCount < 2) continue;
+
+        chosen.forEach(entry => {
+          section.items[entry.slotIndex].shift();
+        });
+
+        section.items.forEach(stack => {
+          if (stack.length && stack[0].frozen) {
+            stack[0].freezeHits++;
+            if (stack[0].freezeHits >= 2) {
+              stack[0].frozen = false;
+              showToast("A frozen item thawed!");
+            }
+          }
+        });
+
+        matchCount++;
+        keepChecking = true;
+        break;
+      }
+    }
+
+    return matchCount;
+  }
+
+  function endGame(won, message) {
+    if (state.won || state.lost) return;
+    state.running = false;
+    state.won = won;
+    state.lost = !won;
+    clearInterval(state.timerId);
+
+    $("resultEmoji").textContent = won ? "🎉" : "🫧";
+    $("resultTitle").textContent = won ? "Shelf cleared!" : "Shelf jam!";
+    $("resultText").textContent = message;
+    $("resultButton").textContent = won && state.level < 100 ? "Next level" : won ? "Replay level" : "Try again";
+    $("resultOverlay").classList.add("show");
+
+    if (won) {
+      playSound("win");
+      if (state.level < 100) $("levelSelect").value = String(state.level + 1);
+    } else {
+      playSound("lose");
+    }
+  }
+
+  function continueResult() {
+    $("resultOverlay").classList.remove("show");
+    if (state.won && state.level < 100) startLevel(state.level + 1, false);
+    else startLevel(state.level, false);
+  }
+
+  function hint() {
+    if (!state.running) return;
+    clearHintMarks();
+
+    // Suggest moving a duplicate into a section that already has one or two.
+    for (let targetSection = 0; targetSection < state.sections.length; targetSection++) {
+      const section = state.sections[targetSection];
+      const counts = new Map();
+      section.items.forEach(stack => {
+        if (stack.length && !stack[0].frozen) counts.set(stack[0].type, (counts.get(stack[0].type) || 0) + 1);
+      });
+
+      for (const [type, count] of counts.entries()) {
+        if (count >= 2) continue;
+        const source = findMovableItem(type, targetSection);
+        const empty = findEmptySlot(targetSection);
+        if (source && empty) {
+          markHint(source, empty);
+          $("status").textContent = "Hint: move this matching item to the highlighted shelf.";
+          return;
+        }
+      }
+    }
+
+    // Otherwise point out any useful matching pair and a safe open slot.
+    for (let a = 0; a < state.sections.length; a++) {
+      for (let b = a + 1; b < state.sections.length; b++) {
+        const itemA = state.sections[a].items.flat().find(x => !x.locked && !x.frozen);
+        const itemB = state.sections[b].items.flat().find(x => x.type === itemA?.type && !x.locked && !x.frozen);
+        const empty = findEmptySlot(a);
+        if (itemA && itemB && empty) {
+          markHint(findItemLocation(itemB.id), empty);
+          $("status").textContent = "Hint: gather matching items together.";
+          return;
+        }
+      }
+    }
+
+    showToast("Try moving a duplicate toward its matching shelf.");
+  }
+
+  function findMovableItem(type, exceptSection) {
+    for (let s = 0; s < state.sections.length; s++) {
+      for (let i = 0; i < state.sections[s].items.length; i++) {
+        const stack = state.sections[s].items[i];
+        if (s !== exceptSection && stack.length === 1 && stack[0].type === type && isMovable(stack)) {
+          return { section: s, slot: i };
+        }
+      }
+    }
+    return null;
+  }
+
+  function findEmptySlot(sectionIndex) {
+    const section = state.sections[sectionIndex];
+    const slotIndex = section.items.findIndex(stack => stack.length === 0);
+    return slotIndex < 0 ? null : { section: sectionIndex, slot: slotIndex };
+  }
+
+  function findItemLocation(id) {
+    for (let s = 0; s < state.sections.length; s++) {
+      for (let i = 0; i < state.sections[s].items.length; i++) {
+        if (state.sections[s].items[i][0]?.id === id) return { section: s, slot: i };
+      }
+    }
+    return null;
+  }
+
+  function markHint(source, dest) {
+    const buttons = shelvesEl.querySelectorAll(".slot");
+    const sourceIndex = flatSlotIndex(source.section, source.slot);
+    const destIndex = flatSlotIndex(dest.section, dest.slot);
+    buttons[sourceIndex]?.classList.add("hint-pulse");
+    buttons[destIndex]?.classList.add("shelf-target", "hint-pulse");
+    setTimeout(clearHintMarks, 2400);
+  }
+
+  function flatSlotIndex(sectionIndex, slotIndex) {
+    let index = slotIndex;
+    for (let i = 0; i < sectionIndex; i++) index += state.sections[i].capacity;
+    return index;
+  }
+
+  function clearHintMarks() {
+    shelvesEl.querySelectorAll(".hint-pulse, .shelf-target").forEach(el => el.classList.remove("hint-pulse", "shelf-target"));
+  }
+
+  function burstAtSlot(sectionIndex, slotIndex) {
+    const slot = shelvesEl.querySelectorAll(".slot")[flatSlotIndex(sectionIndex, slotIndex)];
+    if (!slot) return;
+    const rect = slot.getBoundingClientRect();
+    const x = rect.left + rect.width / 2;
+    const y = rect.top + rect.height / 2;
+    const symbols = ["✨", "⭐", "💖", "🎉", "🌈"];
+    for (let i = 0; i < 14; i++) {
+      const particle = document.createElement("span");
+      particle.className = "particle";
+      particle.textContent = symbols[Math.floor(Math.random() * symbols.length)];
+      particle.style.setProperty("--x", `${x}px`);
+      particle.style.setProperty("--y", `${y}px`);
+      particle.style.setProperty("--dx", `${(Math.random() - .5) * 180}px`);
+      particle.style.setProperty("--dy", `${(Math.random() - .8) * 160}px`);
+      particle.style.setProperty("--size", `${14 + Math.random() * 14}px`);
+      $("particles").appendChild(particle);
+      setTimeout(() => particle.remove(), 900);
+    }
+  }
+
+  let toastTimer;
+  function showToast(message) {
+    const toast = $("toast");
+    toast.textContent = message;
+    toast.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.remove("show"), 1800);
+  }
+
+  function initLevelSelect() {
+    const select = $("levelSelect");
+    for (let i = 1; i <= 100; i++) {
+      const option = document.createElement("option");
+      option.value = String(i);
+      option.textContent = `Level ${i}`;
+      select.appendChild(option);
+    }
+    select.value = "1";
+  }
+
+  function initializeAudio() {
+    if (!state.soundOn) return;
+    if (!state.audio) {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContext) return;
+      state.audio = new AudioContext();
+    }
+    if (state.audio.state === "suspended") state.audio.resume();
+  }
+
+  function tone(freq, duration, type = "sine", volume = .04, delay = 0) {
+    if (!state.soundOn) return;
+    initializeAudio();
+    if (!state.audio) return;
+    const ctx = state.audio;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    const start = ctx.currentTime + delay;
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, start);
+    gain.gain.setValueAtTime(.0001, start);
+    gain.gain.exponentialRampToValueAtTime(volume, start + .015);
+    gain.gain.exponentialRampToValueAtTime(.0001, start + duration);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(start);
+    osc.stop(start + duration + .03);
+  }
+
+  function playSound(which) {
+    if (!state.soundOn) return;
+    if (which === "clack") tone(235, .07, "triangle", .045);
+    if (which === "match") {
+      tone(590, .16, "sine", .06);
+      tone(790, .22, "sine", .045, .09);
+      tone(980, .27, "triangle", .035, .17);
+    }
+    if (which === "win") {
+      [392, 523, 659, 784].forEach((f, i) => tone(f, .34, "triangle", .045, i * .12));
+    }
+    if (which === "lose") {
+      [330, 260, 190].forEach((f, i) => tone(f, .24, "sine", .035, i * .13));
+    }
+  }
+
+  $("startButton").addEventListener("click", () => {
+    initializeAudio();
+    $("startOverlay").classList.remove("show");
+    state.running = true;
+    beginTimer();
+  });
+
+  $("restartButton").addEventListener("click", () => startLevel(state.level, false));
+  $("nextButton").addEventListener("click", () => startLevel(Math.min(100, state.level + 1), false));
+  $("hintButton").addEventListener("click", hint);
+  $("resultButton").addEventListener("click", continueResult);
+  $("resultReplay").addEventListener("click", () => {
+    $("resultOverlay").classList.remove("show");
+    startLevel(state.level, false);
+  });
+
+  $("levelSelect").addEventListener("change", event => {
+    startLevel(Number(event.target.value), false);
+  });
+
+  $("helpButton").addEventListener("click", () => $("helpOverlay").classList.add("show"));
+  $("closeHelpButton").addEventListener("click", () => $("helpOverlay").classList.remove("show"));
+
+  $("soundButton").addEventListener("click", event => {
+    state.soundOn = !state.soundOn;
+    event.currentTarget.textContent = state.soundOn ? "🔊" : "🔇";
+    if (state.soundOn) initializeAudio();
+  });
+
+  initLevelSelect();
+  startLevel(1, true);
+})();
+</script>
+
+
+</body></html>
